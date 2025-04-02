@@ -83,7 +83,7 @@ class verilog:
         self.vf.write("  parameter RAM_DEPTH = 1 << ADDR_WIDTH;\n")
         self.vf.write("  // FIXME: This delay is arbitrary.\n")
         self.vf.write("  parameter DELAY = 3 ;\n")
-        self.vf.write("  parameter VERBOSE = 1 ; //Set to 0 to only display warnings\n")
+        self.vf.write("  parameter VERBOSE = 0 ; //Set to 0 to only display warnings\n")
         self.vf.write("  parameter T_HOLD = 1 ; //Delay to hold dout value after posedge. Value is arbitrary\n")
         self.vf.write("\n")
 
@@ -148,22 +148,23 @@ class verilog:
         self.vf.write("  // All inputs are registers\n")
         self.vf.write("  always @(posedge clk{0})\n".format(port))
         self.vf.write("  begin\n")
-        self.vf.write("    csb{0}_reg = csb{0};\n".format(port))
+        self.vf.write("    csb{0}_reg <= csb{0};\n".format(port))
         if port in self.readwrite_ports:
-            self.vf.write("    web{0}_reg = web{0};\n".format(port))
+            self.vf.write("    web{0}_reg <= web{0};\n".format(port))
         if port in self.write_ports:
             if self.write_size != self.word_size:
-                self.vf.write("    wmask{0}_reg = wmask{0};\n".format(port))
+                self.vf.write("    wmask{0}_reg <= wmask{0};\n".format(port))
             if self.num_spare_cols:
-                self.vf.write("    spare_wen{0}_reg = spare_wen{0};\n".format(port))
-        self.vf.write("    addr{0}_reg = addr{0};\n".format(port))
+                self.vf.write("    spare_wen{0}_reg <= spare_wen{0};\n".format(port))
+        self.vf.write("    addr{0}_reg <= addr{0};\n".format(port))
         if port in self.read_ports:
             self.add_write_read_checks(port)
 
         if port in self.write_ports:
-            self.vf.write("    din{0}_reg = din{0};\n".format(port))
+            self.vf.write("    din{0}_reg <= din{0};\n".format(port))
         if port in self.read_ports:
-            self.vf.write("    #(T_HOLD) dout{0} = {1}'bx;\n".format(port, self.word_size))
+            # self.vf.write("    #(T_HOLD) dout{0} = {1}'bx;\n".format(port, self.word_size))
+            self.vf.write("    dout{0} <= {1}'bx;\n".format(port, self.word_size))
         if port in self.readwrite_ports:
             self.vf.write("    if ( !csb{0}_reg && web{0}_reg && VERBOSE )\n".format(port))
             self.vf.write("      $display($time,\" Reading %m addr{0}=%b dout{0}=%b\",addr{0}_reg,mem[addr{0}_reg]);\n".format(port))
@@ -226,18 +227,18 @@ class verilog:
                 lower = mask * self.write_size
                 upper = lower + self.write_size - 1
                 self.vf.write("        if (wmask{0}_reg[{1}])\n".format(port, mask))
-                self.vf.write("                mem[addr{0}_reg][{1}:{2}] = din{0}_reg[{1}:{2}];\n".format(port, upper, lower))
+                self.vf.write("                mem[addr{0}_reg][{1}:{2}] <= din{0}_reg[{1}:{2}];\n".format(port, upper, lower))
         else:
             upper = self.word_size - self.num_spare_cols - 1
-            self.vf.write("        mem[addr{0}_reg][{1}:0] = din{0}_reg[{1}:0];\n".format(port, upper))
+            self.vf.write("        mem[addr{0}_reg][{1}:0] <= din{0}_reg[{1}:0];\n".format(port, upper))
 
         if self.num_spare_cols == 1:
             self.vf.write("        if (spare_wen{0}_reg)\n".format(port))
-            self.vf.write("                mem[addr{0}_reg][{1}] = din{0}_reg[{1}];\n".format(port, self.word_size))
+            self.vf.write("                mem[addr{0}_reg][{1}] <= din{0}_reg[{1}];\n".format(port, self.word_size))
         else:
             for num in range(self.num_spare_cols):
                 self.vf.write("        if (spare_wen{0}_reg[{1}])\n".format(port, num))
-                self.vf.write("                mem[addr{0}_reg][{1}] = din{0}_reg[{1}];\n".format(port, self.word_size + num))
+                self.vf.write("                mem[addr{0}_reg][{1}] <= din{0}_reg[{1}];\n".format(port, self.word_size + num))
 
         self.vf.write("    end\n")
         self.vf.write("  end\n")
@@ -255,7 +256,8 @@ class verilog:
             self.vf.write("    if (!csb{0}_reg && web{0}_reg)\n".format(port))
         else:
             self.vf.write("    if (!csb{0}_reg)\n".format(port))
-        self.vf.write("       dout{0} <= #(DELAY) mem[addr{0}_reg];\n".format(port))
+        # self.vf.write("       dout{0} <= #(DELAY) mem[addr{0}_reg];\n".format(port))
+        self.vf.write("       dout{0} <= mem[addr{0}_reg];\n".format(port))
         self.vf.write("  end\n")
 
     def add_address_check(self, wport, rport):
