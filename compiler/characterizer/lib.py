@@ -232,13 +232,17 @@ class lib:
         for i in range(1, self.total_port_num):
             control_str += ' & csb{0}'.format(i)
 
+        # Nangate standard cell lib uses nW for leakage so we might as
+        # well change that to keep everything consistent by multiplying
+        # the leakage power by 1000. -cbatten
+
         # Leakage is included in dynamic when macro is enabled
         self.lib.write("    leakage_power () {\n")
         # 'when' condition unnecessary when cs pin does not turn power to devices
         # self.lib.write("      when : \"{0}\";\n".format(control_str))
-        self.lib.write("      value : {};\n".format(self.char_sram_results["leakage_power"]))
+        self.lib.write("      value : {};\n".format(1e6*self.char_sram_results["leakage_power"]))
         self.lib.write("    }\n")
-        self.lib.write("    cell_leakage_power : {};\n".format(self.char_sram_results["leakage_power"]))
+        self.lib.write("    cell_leakage_power : {};\n".format(1e6*self.char_sram_results["leakage_power"]))
 
 
     def write_units(self):
@@ -252,8 +256,20 @@ class lib:
         self.lib.write("    voltage_unit : \"1V\" ;\n")
         self.lib.write("    current_unit : \"1mA\" ;\n")
         self.lib.write("    resistance_unit : \"1kohm\" ;\n")
-        self.lib.write("    capacitive_load_unit(1, pF) ;\n")
-        self.lib.write("    leakage_power_unit : \"1mW\" ;\n")
+
+        # Nangate standard cell lib in FreePDK45 .lib uses fF not pF so
+        # to keep things consistent, we want the capacitance to be in fF.
+        # Otherwise I was seeing weird issues with Innovus using pF for
+        # the output loads of a block instead of fF. -cbatten
+
+        self.lib.write("    capacitive_load_unit(1, fF) ;\n")
+
+        # Similarly, Nangate standard cell lib uses nW for leakage so we
+        # might as well change that to keep everything consistent.
+        # -cbatten
+
+        self.lib.write("    leakage_power_unit : \"1nW\" ;\n")
+
         self.lib.write("    pulling_resistance_unit :\"1kohm\" ;\n")
         self.lib.write("    operating_conditions(OC){\n")
         self.lib.write("    process : {} ;\n".format(1.0)) # How to use TT, FF, SS?
@@ -326,9 +342,18 @@ class lib:
             self.lib.write("        variable_1 : input_net_transition;\n")
             self.lib.write("        variable_2 : total_output_net_capacitance;\n")
             self.write_index(1,self.slews)
+
             # Dividing by 1000 to all cap values since output of .sp is in fF,
             # and it needs to be in pF for Innovus.
-            self.write_index(2,self.loads/1000)
+            # self.write_index(2,self.loads/1000)
+
+            # Actually, the FreePDK45 .lib uses fF not pF so to keep
+            # things consistent, we want the capacitance to be in fF.
+            # Otherwise I was seeing weird issues with Innovus using pF
+            # for the output loads of a block instead of fF. -cbatten
+
+            self.write_index(2,self.loads)
+
             self.lib.write("    }\n\n")
 
         CONS = ["CONSTRAINT_TABLE"]
