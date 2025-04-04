@@ -264,7 +264,7 @@ class verilog:
         self.vf.write("\n")
         self.vf.write("  specify\n")
         for i in range(self.word_size + self.num_spare_cols):
-          self.vf.write(f"    (clk{port} => dout{port}[{i}]) = (0.1, 0.1);")
+          self.vf.write(f"    (clk{port} => dout{port}[{i}]) = (0.1, 0.1);\n")
         self.vf.write("  endspecify\n")
 
     def add_address_check(self, wport, rport):
